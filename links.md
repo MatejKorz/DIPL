@@ -4,7 +4,10 @@
 
 - [Docs](https://docs.kernel.org/crypto/index.html)
 - [Developing Cipher Algorithms](https://docs.kernel.org/crypto/devel-algos.html)
+- [Building modules](https://docs.kernel.org/kbuild/modules.html)
+- [Modprobe man page](https://manpages.debian.org/trixie/kmod/modprobe.8.en.html)
 - [AES crypto API](https://github.com/torvalds/linux/blob/master/crypto/aes.c)
+- [Linux module example](https://sysprog21.github.io/lkmpg/#hello-and-goodbye)
 
 ## OpenSSL
 
