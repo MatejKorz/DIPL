@@ -1,5 +1,11 @@
 # Sources
 
+## ddd-AES
+
+- [XTS mode revisited: high hopes for key scope](https://arxiv.org/abs/2502.18631)
+- [Deck-based wide block cipher modes and an exposition of the blinded keyed hashing model](https://philosophymindscience.org/index.php/ToSC/article/download/8451/8021)
+- [Efficient instances of docked double decker with AES, and application to authenticated encryption](https://eprint.iacr.org/2024/084.pdf)
+
 ## Crypto API
 
 - [Docs](https://docs.kernel.org/crypto/index.html)
