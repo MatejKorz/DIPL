@@ -20,39 +20,35 @@
 - [Symmetric Key Cipher API (skcipher)](https://www.kernel.org/doc/html/latest/crypto/api-skcipher.html)
 - [Kernel Crypto API userspace interface (AF_ALG)](https://www.kernel.org/doc/html/latest/crypto/userspace-if.html)
 
+Linux Crypto API is the original option for using cryptographic algorithms in the kernel. It provides access to ciphers (or transformations, which is how documentation calls them), hashes, random number generation, and more. The API is a registry of these transformations, that kernel code can request by name, instead of calling the implementation directly. Transformations such as `struct crypto_alg` are registered and removed by calling `crypto_register_alg()` and `crypto_unregister_alg()` respectively. Each specific transformation type has its own API and structures to register and functions calls to use, for example `struct ahash_alg` for hashes. Registered structures contain name, cipher parameters and priority, for different driver implementations.
+
+To use Crypto API in kernel, transform handle is found by its name and is allocated. Then input parameters such as key, initialization vector and scatterlists for data buffer are set and encrypt or decrypt can be called. The request can be completed synchronously or via callback, based on implementation and set flags.
+
+The Crypto API can be also exposed to userspace by AF_ALG socket. Main advantage of the API is the flexibility at runtime. Algorithm can be chosen from userspace by string name without any knowledge at compile time. This allows tools such as dm-crypt/cryptsetup to use newer algorithms without any internal changes. The best implementation can be also picked by the priority setup in the transformation structure. It support asynchronous requests, so cryptographic accelerators can be used.
+
+But this also ties to the disadvantages of this API. Due to each call being executed by function pointers, it cannot be optimized by compiler in runtime. Also there is a substantial overhead in transformation lookup, and initialization, especially for smaller or one-off operations. Use for the API is complex and verbose, including handle and request allocation, scatterlist building and setting parameters and callbacks and then freeing everything.
+
 ### Crypto library
 
 - [libcrypto docs](https://docs.kernel.org/crypto/libcrypto.html)
+- [KUnit tests](https://docs.kernel.org/dev-tools/kunit/index.html)
+
+Linux kernel's crypto library, located in `lib/crypto` is a newer alternative to the traditional crypto API. Main benefit over the aforementioned crypto API, is faster and easily accessible algorithms. Code is run without indirect calls, memory allocation, lookups in algorithm registry and used by the API. Library functions are linked statically, instead of dynamic loading by algorithm name.
+
+Code is split between:
+- `lib/crypto/*.c` - implementation
+- `lib/crypto/$(SRCARCH)/` - specific optimizations for current architecture
+- `include/crypto/` - header files
+
+Testing of library functions is also standardized to use KUnit tests, located in `lib/crypto/tests`. ...
+
+Recommendation from the kernel developers, at least according to the official documentations is to use this approach when implementing new algorithms or using exiting ones in the in-kernel code. Reasons for this are multiple. One of the most important is performance, as was mentioned earlier. Another reason is simplicity of the code. Exception for this may be the backwards compatibility with existing tools like cryptsetup and dm-crypt. Mainly these programs are used for disk encryption on Linux systems and they allow users to select the algorithm by input string, to use for the encryption. For this use-case is necessary to use the API, otherwise tools itself would need to support and include in their code calls to specific library function on each of the existing, or rather supported architectures.
+
+This issue can be solved, by implementing algorithm in crypto library, but writing a short wrapper around it, to be able to register it in the traditional API. This approach will bring best of the both worlds, speed and simplicity of the library functions if it is needed, but also the compatibility and easy integration with existing tools, by being able to access it from the API. This approach is also suggested by the official documentation.
 
 ### History
 
 - [Progress in modernizing kernel cryptography](https://lwn.net/Articles/1077427/)
-
-### Diff
-
-| Property | Tradition crypto API | Crypto library |
-|----------|----------------------|----------------|
-|---|---|---|
-| **Dispatch mechanism** | Runtime name-based lookup (`crypto_alloc_*("cbc(aes)", ...)`) against a registry | Direct compile-time function calls, no lookup |
-| **Registration** | `crypto_register_*()` / `crypto_unregister_*()` into a global registry | None — module load just runs init code (e.g. picks best CPU impl) |
-| **Visibility** | Shows up in `/proc/crypto` | Not visible anywhere at runtime |
-| **API shape** | Struct-of-callbacks (`.setkey`, `.encrypt`, `.decrypt`, etc.) wrapped in `crypto_alg` | Plain named functions (e.g. `sha256_update()`) |
-| **Userspace access** | Reachable via `AF_ALG` sockets | Kernel-internal only |
-| **Overhead** | Indirect calls, allocation, scatterlist/request machinery | Direct call, no allocation — faster, especially for short inputs |
-| **Algorithm agility** | Best implementation chosen at runtime by priority among registered drivers sharing a `cra_name` | Best CPU-specific implementation chosen once at module init; caller fixed to a specific function at compile time |
-| **Directory convention** | `crypto/`, `arch/$(SRCARCH)/crypto/`, `drivers/crypto/` | `lib/crypto/`, `lib/crypto/$(SRCARCH)/` |
-| **Kconfig style** | Often user-visible tristate options | Hidden tristate `CRYPTO_LIB_<ALGO>`, `select`ed by dependents |
-| **Relationship** | — | Where possible, `crypto/` wraps `lib/crypto/` implementations rather than duplicating logic |
-| **Best suited for** | Algorithm decided at runtime (userspace-chosen, or hardware-offload drivers plugging in) | Caller already knows exactly which algorithm it wants |
-| **Step 1: Implement** | Fill in an alg struct (`skcipher_alg`, `shash_alg`, `aead_alg`, etc.) with callbacks (`.setkey`, `.encrypt`/`.decrypt` or `.init`/`.update`/`.final`) | Write plain dedicated functions in `lib/crypto/<algo>.c` |
-| **Step 2: Metadata/headers** | Fill in embedded `struct crypto_alg`: `cra_name`, `cra_driver_name`, `cra_priority`, `cra_blocksize`, `cra_ctxsize`, `cra_module` | Add public API/prototypes to `include/crypto/<algo>.h` |
-| **Step 3: Arch optimization (optional)** | Separate driver module in `drivers/crypto/` or `arch/$(SRCARCH)/crypto/`, registered under same `cra_name` with higher priority | Arch-optimized variant under `lib/crypto/$(SRCARCH)/`, often as a header included by the generic `.c` so both build into one module |
-| **Step 4: Register/wire-up** | Call `crypto_register_alg()` (or type-specific variant, e.g. `crypto_register_skcipher()`) in `module_init()`; unregister symmetrically in `module_exit()` | No register call needed; init-time logic (module init/initcall) picks best implementation for the running CPU once |
-| **Step 5: Kconfig** | Add tristate `CRYPTO_<NAME>` in `crypto/Kconfig` (or `drivers/crypto/Kconfig`), selecting the base transform type needed | Add hidden tristate `CRYPTO_LIB_<ALGO>` in `lib/crypto/Kconfig` (+ `CRYPTO_ARCH_MAY_HAVE_LIB_<ALGO>` if arch-optimized) |
-| **Step 6: Makefile** | Add source to `crypto/Makefile` (or driver's Makefile) | Add source to `lib/crypto/Makefile` |
-| **Step 7: Testing** | Self-test/`cryptomgr`, or exercise via `crypto_alloc_*()` in-kernel or `AF_ALG`/`kcapi` from userspace | Add KUnit tests under `lib/crypto/tests/` |
-| **Step 8: Result** | Algorithm becomes visible in `/proc/crypto`, reachable by name via `crypto_alloc_*("name", ...)` | Callers `#include` the header and call functions directly — no registry, no `/proc/crypto` entry |
-
 
 ## Measuring performance
 
