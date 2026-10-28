@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-2.0
+
 #ifndef _XORCIPHER_H
 #define _XORCIPHER_H
 
