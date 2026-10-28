@@ -1,0 +1,36 @@
+# Wire the xorcipher library and its KUnit tests into lib/crypto.
+# Applied with `patch -p1` from the kernel source root by
+# `make kunit-install`.  Context matches linux-source-6.12 (6.12.111);
+# hunk offsets may drift a few lines, patch will compensate.
+--- a/lib/crypto/Kconfig
++++ b/lib/crypto/Kconfig
+@@ -147,7 +147,20 @@
+ config CRYPTO_LIB_SHA1
+ 	tristate
+ 
+ config CRYPTO_LIB_SHA256
+ 	tristate
+ 
++config CRYPTO_LIB_XORCIPHER
++	tristate "XOR cipher library interface"
++	help
++	  Enable the XOR ECB cipher library interface, providing
++	  xor_crypt_ecb() for in-kernel users.
++
++config CRYPTO_LIB_XORCIPHER_KUNIT
++	tristate "KUnit tests for the XOR cipher library interface"
++	depends on CRYPTO_LIB_XORCIPHER
++	depends on KUNIT
++	help
++	  KUnit tests for xor_crypt_ecb().
++
+ endmenu
+--- a/lib/crypto/Makefile
++++ b/lib/crypto/Makefile
+@@ -58,3 +58,6 @@
+ endif
+ 
+ obj-$(CONFIG_MPILIB) += mpi/
++
++obj-$(CONFIG_CRYPTO_LIB_XORCIPHER)		+= xorcipher.o
++obj-$(CONFIG_CRYPTO_LIB_XORCIPHER_KUNIT)	+= xorcipher_test.o
