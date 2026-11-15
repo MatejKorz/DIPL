@@ -6,7 +6,7 @@
 obj-m += xorcipher.o
 
 KDIR ?= /lib/modules/$(shell uname -r)/build
-KSRC ?= $(HOME)/kernel/linux-source-6.12.111
+KSRC ?= $(HOME)/kernel/linux-source-7.2.12
 PWD  := $(shell pwd)
 
 IN_TREE := lib/crypto/xorcipher.c lib/crypto/xorcipher.h lib/crypto/xorcipher_test.c
@@ -35,13 +35,13 @@ kunit-deps:
 	sudo apt install -y build-essential bc bison flex libelf-dev libssl-dev \
 		dwarves python3 dpkg-dev
 
-KVER ?= 6.12.111
+KVER ?= 7.2.12-1~bpo13+1
 kunit-source:
 	@test ! -d $(KSRC) || { echo "$(KSRC) already exists"; exit 1; }
-	sudo apt install -y linux-source-6.12=$(KVER)-1
+	sudo apt install -y -t trixie-backports linux-source-7.2
 	mkdir -p $(dir $(KSRC))
-	cd $(dir $(KSRC)) && tar xf /usr/src/linux-source-6.12.tar.xz && \
-		mv linux-source-6.12 $(notdir $(KSRC))
+	cd $(dir $(KSRC)) && tar xf /usr/src/linux-source-7.2.tar.xz && \
+		mv linux-source-7.2 $(notdir $(KSRC))
 
 kunit-tree-check:
 	@test ! -e $(KSRC)/.config -a ! -d $(KSRC)/include/config \
@@ -59,10 +59,13 @@ kunit-install:
 	cp xorcipher.c xorcipher.h xorcipher_test.c $(KSRC)/lib/crypto/
 	cp .kunitconfig $(KSRC)/
 	cd $(KSRC) && \
-	if patch -p1 --dry-run -R --force --silent < $(PWD)/kunit.patch >/dev/null 2>&1; then \
-		echo "kunit.patch: already applied"; \
-	else \
-		patch -p1 --forward --silent < $(PWD)/kunit.patch; \
+	if ! grep -q 'xorcipher begin' lib/crypto/Kconfig; then \
+		echo >> lib/crypto/Kconfig && \
+		cat $(PWD)/xorcipher.Kconfig >> lib/crypto/Kconfig; \
+	fi && \
+	if ! grep -q 'xorcipher begin' lib/crypto/Makefile; then \
+		echo >> lib/crypto/Makefile && \
+		cat $(PWD)/xorcipher.mk >> lib/crypto/Makefile; \
 	fi
 
 kunit: kunit-tree-check kunit-install
@@ -70,7 +73,7 @@ kunit: kunit-tree-check kunit-install
 		--kunitconfig=.kunitconfig 'xorcipher*'
 
 kunit-clean:
-	cd $(KSRC) && patch -p1 -R --silent < $(PWD)/kunit.patch || true
+	cd $(KSRC) && sed -i '/xorcipher begin/,$$d' lib/crypto/Kconfig lib/crypto/Makefile
 	rm -f $(addprefix $(KSRC)/,$(IN_TREE)) $(KSRC)/.kunitconfig
 
 kunit-distclean: kunit-clean
