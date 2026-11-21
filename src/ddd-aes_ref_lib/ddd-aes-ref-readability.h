@@ -1,19 +1,18 @@
 /*
     MIT license
     Copyright (C) 2025 Intel Corporation
+    Copyright (C) 2026 Matej Korž
     SPDX-License-Identifier: MIT
 */
 
 #ifndef DDD_AES_REF_READABILITY_H_
 #define DDD_AES_REF_READABILITY_H_
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <linux/types.h>
+#include <linux/string.h>
+#include <crypto/gf128hash.h>
 
-#include "polyval.h"
 #include "aes.h"
-#include "zeroize.h"
 
 // In the default version, we assume |c|=0 and use 28 bits for the counter j, so we can encrypt up to 2**28 - 1 blocks
 #define MAXENCRYPTBLOCKS (1 << 28)

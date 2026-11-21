@@ -1,6 +1,7 @@
 /*
     MIT license
     Copyright (C) 2025 Intel Corporation
+    Copyright (C) 2026 Matej Korž
     SPDX-License-Identifier: MIT
 */
 
@@ -10,53 +11,38 @@
 /// @param[out] out Output data. The result of H_L() evaluation on input data is XORed into this buffer.
 /// @param[in] in Input data.
 /// @param[in] len Input data length (in bytes).
-/// @param[in] key H_L() function key. Precondition: the key is 128-bit-long.
+/// @param[in] raw_key H_L() function key. Precondition: the key is 128-bit-long.
 /// @return 0 on success, error code < 0 on error.
-int xor_h(uint8_t* out, const uint8_t* const in, const size_t len, const uint8_t* const key)
+int xor_h(u8* out, const u8* const in, const size_t len, const u8* const raw_key)
 {
-    uint8_t tag[POLYVAL_TAG_LEN_BYTES] = { 0 };
+	struct polyval_key key;
+	struct polyval_ctx ctx;
+	u8 tag[POLYVAL_DIGEST_SIZE];
+	u8 tmp[POLYVAL_BLOCK_SIZE] = {};
+	u8 lenblk[POLYVAL_BLOCK_SIZE] = {};
+	const size_t leftover = len % POLYVAL_BLOCK_SIZE;
+	size_t len_bits = len * 8;
 
-    // How many incoming bytes beyond the whole multiple of a block size we have (may be 0)
-    const size_t leftover_bytes = len % POLYVAL_BLOCK_LEN_BYTES;
+	polyval_preparekey(&key, raw_key);
+	polyval_init(&ctx, &key);
 
-    // Process the data up to the whole multiple of POLYVAL_BLOCK_LEN_BYTES
-    int status = polyval(tag, in, len - leftover_bytes, key, false);
-    if (status < 0) {
-        printf("ERROR: polyval() failed, status: %d\n", status);
-        return status;
-    }
+	polyval_update(&ctx, in, len - leftover);
+	if (leftover) {
+		memcpy(tmp, in + len - leftover, leftover);
+		polyval_update(&ctx, tmp, POLYVAL_BLOCK_SIZE);
+		memzero_explicit(tmp, sizeof(tmp));
+	}
+	memcpy(lenblk, &len_bits, sizeof(len_bits));
+	polyval_update(&ctx, lenblk, POLYVAL_BLOCK_SIZE);
+	polyval_final(&ctx, tag);
 
-    uint8_t tmp_buf[POLYVAL_BLOCK_LEN_BYTES] = { 0 };
-    // Create and process a padded extra block if necessary
-    if (leftover_bytes != 0) {
-        memcpy(tmp_buf, in + len - leftover_bytes, leftover_bytes);
-        status = polyval(tag, tmp_buf, sizeof(tmp_buf), key, true);
-        // Zeroize the tmp buffer to prepare it for future use
-        memset(tmp_buf, 0, sizeof(tmp_buf));
-        if (status < 0) {
-            printf("ERROR: polyval() failed, status: %d\n", status);
-            return status;
-        }
-    }
+	for (size_t i = 0; i < POLYVAL_DIGEST_SIZE; ++i)
+		out[i] ^= tag[i];
 
-    // Create and process the final block with incoming data size in bits stored as block-sized value
-    // The spec doesn't define this [yet]. The below uses little-endian.
-    const size_t len_bits = len * 8;
-    memcpy(tmp_buf, &len_bits, sizeof(len_bits));
-    status = polyval(tag, tmp_buf, sizeof(tmp_buf), key, true);
-    if (status < 0) {
-        printf("ERROR: polyval() failed, status: %d\n", status);
-        return status;
-    }
-
-    for (size_t i = 0; i < POLYVAL_TAG_LEN_BYTES; ++i) {
-        out[i] ^= tag[i];
-    }
-
-    zeroize_secret(tag, sizeof(tag));
-    zeroize_secret(tmp_buf, sizeof(tmp_buf));
-
-    return 0;
+	memzero_explicit(tag, sizeof(tag));
+	memzero_explicit(lenblk, sizeof(lenblk));
+	memzero_explicit(&key, sizeof(key));
+	return 0;
 }
 
 /// @brief Finite-field multiplication by a constant 2.
@@ -79,7 +65,7 @@ static void times_2(__m128i* out)
     buf[0] ^= 0x87 & ((~carry_in) + 1);
     *out = _mm_loadu_si128((__m128i*)buf);
 
-    zeroize_secret(buf, sizeof(buf));
+    memzero_explicit(buf, sizeof(buf));
 }
 
 /// @brief DDD-AES F_K() function implementation. XORs to the existing value of @p out the result of the PRF
@@ -133,7 +119,7 @@ void xor_f(uint8_t* out,
         // Multiply mask by two
         times_2(&s);
 
-        zeroize_secret(&z_j, sizeof(z_j));
+        memzero_explicit(&z_j, sizeof(z_j));
     }
 
     // Handle the possible last incomplete block
@@ -145,13 +131,13 @@ void xor_f(uint8_t* out,
             *memory_block++ ^= last_z[i];
         }
 
-        zeroize_secret(&last_z, sizeof(last_z));
-        zeroize_secret(&z_j, sizeof(z_j));
+        memzero_explicit(&last_z, sizeof(last_z));
+        memzero_explicit(&z_j, sizeof(z_j));
     }
 
-    zeroize_secret(rnd_keys, sizeof(rnd_keys));
-    zeroize_secret(&s, sizeof(s));
-    zeroize_secret(&i, sizeof(i));
+    memzero_explicit(rnd_keys, sizeof(rnd_keys));
+    memzero_explicit(&s, sizeof(s));
+    memzero_explicit(&i, sizeof(i));
 }
 
 int ddd_aes_ref_read_encrypt(uint8_t* cipher,
