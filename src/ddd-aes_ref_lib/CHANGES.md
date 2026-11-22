@@ -10,3 +10,4 @@
     - rnd_keys[RNDKEYSIZE_BYTES] -> struct aes_key / aes_encrypt_arg union
     - KEYSIZE_BYTES -> AES_KEYSIZE_128
 - replace the fpu calls in reference implementation
+- times2 function implementation from the `<crypto/gf128mul.h>`

@@ -5,14 +5,10 @@
     SPDX-License-Identifier: MIT
 */
 
-#ifndef DDD_AES_REF_READABILITY_H_
-#define DDD_AES_REF_READABILITY_H_
+#ifndef DDD_AES_REF_H_
+#define DDD_AES_REF_H_
 
 #include <linux/types.h>
-#include <linux/string.h>
-#include <crypto/gf128hash.h>
-
-#include "aes.h"
 
 // In the default version, we assume |c|=0 and use 28 bits for the counter j, so we can encrypt up to 2**28 - 1 blocks
 #define MAXENCRYPTBLOCKS (1 << 28)
@@ -20,26 +16,7 @@
 // Tweak size in bytes
 #define TWEAKSIZE_BYTES 16
 
-#ifdef _WIN32
-#define ALIGN128 _Alignas(128)
-#else
-// For simplicity we assume that anything that's not MSVC is GCC or compatible
-#define ALIGN128 __attribute__((aligned(128)))
-#endif
-
-#ifdef _WIN32
-#define NONSTRING
-#else
-// For simplicity we assume that anything that's not MSVC is GCC or compatible.
-// GCC 15 warns if a "string-like" array initializer truncates the NUL terminator.
-// This throws false positives in some of our tests. The attribute is used to explicitly mark relevant arrays
-// and silence the warning.
-#define NONSTRING __attribute__((__nonstring__))
-#endif
-
-#ifdef TEST_INTERNAL_FN_ACCESS
-int xor_h(uint8_t* out, const uint8_t* const in, const size_t len, const uint8_t* const key);
-#endif
+int xor_h(u8 *out, const u8 *const in, const size_t len, const u8 *const raw_key);
 
 /// @brief DDD-AES encryption implementation.
 /// @param[out] cipher Ciphertext (output). The result of DDD-AES encryption function application to @p plain.
@@ -50,12 +27,12 @@ int xor_h(uint8_t* out, const uint8_t* const in, const size_t len, const uint8_t
 /// @param[in] tweak Tweak.
 /// @param[in] tweak_len Tweak length (in bytes).
 /// @return 0 on success, error code < 0 on error.
-int ddd_aes_ref_read_encrypt(uint8_t* cipher,
-                             const uint8_t* const plain,
+int ddd_aes_ref_read_encrypt(u8* cipher,
+                             const u8* const plain,
                              const size_t len,
-                             const uint8_t* const key_k,
-                             const uint8_t* const key_l,
-                             const uint8_t* const tweak,
+                             const u8* const key_k,
+                             const u8* const key_l,
+                             const u8* const tweak,
                              const size_t tweak_len);
 
 /// @brief DDD-AES decryption implementation.
@@ -67,12 +44,12 @@ int ddd_aes_ref_read_encrypt(uint8_t* cipher,
 /// @param[in] tweak Tweak.
 /// @param[in] tweak_len Tweak length (in bytes).
 /// @return 0 on success, error code < 0 on error.
-int ddd_aes_ref_read_decrypt(uint8_t* plain,
-                             const uint8_t* const cipher,
+int ddd_aes_ref_read_decrypt(u8* plain,
+                             const u8* const cipher,
                              const size_t len,
-                             const uint8_t* const key_k,
-                             const uint8_t* const key_l,
-                             const uint8_t* const tweak,
+                             const u8* const key_k,
+                             const u8* const key_l,
+                             const u8* const tweak,
                              const size_t tweak_len);
 
-#endif /* DDD_AES_REF_READABILITY_H_ */
+#endif /* DDD_AES_REF_H_ */
