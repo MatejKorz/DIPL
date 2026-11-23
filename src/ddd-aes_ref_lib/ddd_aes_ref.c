@@ -137,7 +137,7 @@ static int xor_f(u8 *out, const size_t outlen, const u8 in[AES_BLOCK_SIZE], cons
     return 0;
 }
 
-int ddd_aes_ref_read_encrypt(u8 *cipher, const u8 *const plain, const size_t len, const u8 *const key_k,
+int ddd_aes_ref_encrypt(u8 *cipher, const u8 *const plain, const size_t len, const u8 *const key_k,
                              const u8 *const key_l, const u8 *const tweak, const size_t tweak_len) {
     // Basic input validation
     if (plain == NULL || cipher == NULL || key_k == NULL || key_l == NULL || tweak == NULL) { return -EINVAL; }
@@ -180,7 +180,7 @@ int ddd_aes_ref_read_encrypt(u8 *cipher, const u8 *const plain, const size_t len
     return 0;
 }
 
-int ddd_aes_ref_read_decrypt(u8 *plain, const u8 *const cipher, const size_t len, const u8 *const key_k,
+int ddd_aes_ref_decrypt(u8 *plain, const u8 *const cipher, const size_t len, const u8 *const key_k,
                              const u8 *const key_l, const u8 *const tweak, const size_t tweak_len) {
     // Basic input validation
     if (plain == NULL || cipher == NULL || key_k == NULL || key_l == NULL || tweak == NULL) { return -EINVAL; }
@@ -224,8 +224,8 @@ int ddd_aes_ref_read_decrypt(u8 *plain, const u8 *const cipher, const size_t len
 }
 
 
-EXPORT_SYMBOL_GPL(ddd_aes_ref_read_encrypt);
-EXPORT_SYMBOL_GPL(ddd_aes_ref_read_decrypt);
+EXPORT_SYMBOL_GPL(ddd_aes_ref_encrypt);
+EXPORT_SYMBOL_GPL(ddd_aes_ref_decrypt);
 MODULE_LICENSE("Dual MIT/GPL");
 MODULE_DESCRIPTION("ddd-AES reference version");
 MODULE_AUTHOR("Matej Korž");

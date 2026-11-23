@@ -1,0 +1,9 @@
+# ddd_aes_ref begin
+config CRYPTO_LIB_DDD_AES_REF
+    tristate "ddd-AES reference cipher library interface"
+    select CRYPTO_LIB_AES
+    select CRYPTO_LIB_GF128HASH
+    help
+      Enable the ddd-AES reference cipher library interface, providing
+      ddd_aes_ref_encrypt() and ddd_aes_ref_decrypt() for in-kernel users.
+# ddd_aes_ref end

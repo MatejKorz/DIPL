@@ -1,0 +1,8 @@
+# ddd_aes_ref kunit begin
+config CRYPTO_LIB_DDD_AES_REF_KUNIT
+	tristate "KUnit tests for the ddd-AES reference cipher" if !KUNIT_ALL_TESTS
+	depends on KUNIT && CRYPTO_LIB_DDD_AES_REF
+	default KUNIT_ALL_TESTS
+	help
+	  KUnit tests for the ddd-AES reference implementation.
+# ddd_aes_ref kunit end

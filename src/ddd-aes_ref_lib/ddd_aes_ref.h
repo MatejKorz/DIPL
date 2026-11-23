@@ -9,12 +9,17 @@
 #define DDD_AES_REF_H_
 
 #include <linux/types.h>
+#include <crypto/aes.h>
 
 // In the default version, we assume |c|=0 and use 28 bits for the counter j, so we can encrypt up to 2**28 - 1 blocks
 #define MAXENCRYPTBLOCKS (1 << 28)
 
 // Tweak size in bytes
 #define TWEAKSIZE_BYTES 16
+
+// This, or include aes in tests also - TODO decide
+#define BLOCKSIZE_BYTES AES_BLOCK_SIZE
+#define KEYSIZE_BYTES AES_KEYSIZE_128
 
 int xor_h(u8 *out, const u8 *const in, const size_t len, const u8 *const raw_key);
 
@@ -27,7 +32,7 @@ int xor_h(u8 *out, const u8 *const in, const size_t len, const u8 *const raw_key
 /// @param[in] tweak Tweak.
 /// @param[in] tweak_len Tweak length (in bytes).
 /// @return 0 on success, error code < 0 on error.
-int ddd_aes_ref_read_encrypt(u8* cipher,
+int ddd_aes_ref_encrypt(u8* cipher,
                              const u8* const plain,
                              const size_t len,
                              const u8* const key_k,
@@ -44,7 +49,7 @@ int ddd_aes_ref_read_encrypt(u8* cipher,
 /// @param[in] tweak Tweak.
 /// @param[in] tweak_len Tweak length (in bytes).
 /// @return 0 on success, error code < 0 on error.
-int ddd_aes_ref_read_decrypt(u8* plain,
+int ddd_aes_ref_decrypt(u8* plain,
                              const u8* const cipher,
                              const size_t len,
                              const u8* const key_k,
