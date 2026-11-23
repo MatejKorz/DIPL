@@ -16,3 +16,4 @@
 
 - tests in `crypto/tests`
 - dependency on other modules (CRYPTO_LIB_AES, CRYPTO_LIB_GF128HASH)
+- testing static function with kunit [here](https://www.kernel.org/doc/html/latest/dev-tools/kunit/usage.html#testing-static-functions)

@@ -5,14 +5,16 @@
     SPDX-License-Identifier: MIT
 */
 
-#include <linux/module.h>
 #include <linux/export.h>
+#include <linux/module.h>
 #include <linux/string.h>
 #include <linux/unaligned.h>
 
 #include <crypto/aes.h>
 #include <crypto/gf128hash.h>
 #include <crypto/gf128mul.h>
+
+#include <kunit/visibility.h>
 
 #include "ddd_aes_ref.h"
 
@@ -22,7 +24,7 @@
 /// @param[in] len Input data length (in bytes).
 /// @param[in] raw_key H_L() function key. Precondition: the key is 128-bit-long.
 /// @return 0 on success, error code < 0 on error.
-int xor_h(u8 *out, const u8 *const in, const size_t len, const u8 *const raw_key) {
+VISIBLE_IF_KUNIT int xor_h(u8 *out, const u8 *const in, const size_t len, const u8 *const raw_key) {
     struct polyval_key key;
     struct polyval_ctx ctx;
     u8 tag[POLYVAL_DIGEST_SIZE];
@@ -52,19 +54,21 @@ int xor_h(u8 *out, const u8 *const in, const size_t len, const u8 *const raw_key
     memzero_explicit(&key, sizeof(key));
     return 0;
 }
+EXPORT_SYMBOL_IF_KUNIT(xor_h);
 
 /// @brief Finite-field multiplication by a constant 2.
 /// @brief Same field as in AES-XTS.
 /// @param[in,out] out Input/output data. out = 2 * out. Precondition: must be exactly 128 bits.
-static void times_2(u8 out[AES_BLOCK_SIZE]) {
+VISIBLE_IF_KUNIT void times_2(u8 out[AES_BLOCK_SIZE]) {
     le128 t;
 
-	memcpy(&t, out, sizeof(t));
-	gf128mul_x_ble(&t, &t);
-	memcpy(out, &t, sizeof(t));
+    memcpy(&t, out, sizeof(t));
+    gf128mul_x_ble(&t, &t);
+    memcpy(out, &t, sizeof(t));
 
     memzero_explicit(&t, sizeof(t));
 }
+EXPORT_SYMBOL_IF_KUNIT(times_2);
 
 /// @brief DDD-AES F_K() function implementation. XORs to the existing value of @p out the result of the PRF
 /// @brief evaluation on @p in.
@@ -74,8 +78,8 @@ static void times_2(u8 out[AES_BLOCK_SIZE]) {
 /// @param[in] key_k 128-bit F_K() function key.
 /// @param[in] b Domain separator value B.
 /// @param[in] tweak Tweak value W.
-static int xor_f(u8 *out, const size_t outlen, const u8 in[AES_BLOCK_SIZE], const u8 *key_k, const u8 b,
-          const u8 tweak[TWEAKSIZE_BYTES]) {
+VISIBLE_IF_KUNIT int xor_f(u8 *out, const size_t outlen, const u8 in[AES_BLOCK_SIZE], const u8 *key_k, const u8 b,
+                           const u8 tweak[TWEAKSIZE_BYTES]) {
     struct aes_enckey enc;
     u8 s[AES_BLOCK_SIZE];     /* mask: AES_K(W || B), then 2*s per block */
     u8 i_blk[AES_BLOCK_SIZE]; /* private copy of "in" */
@@ -136,9 +140,10 @@ static int xor_f(u8 *out, const size_t outlen, const u8 in[AES_BLOCK_SIZE], cons
 
     return 0;
 }
+EXPORT_SYMBOL_IF_KUNIT(xor_f);
 
 int ddd_aes_ref_encrypt(u8 *cipher, const u8 *const plain, const size_t len, const u8 *const key_k,
-                             const u8 *const key_l, const u8 *const tweak, const size_t tweak_len) {
+                        const u8 *const key_l, const u8 *const tweak, const size_t tweak_len) {
     // Basic input validation
     if (plain == NULL || cipher == NULL || key_k == NULL || key_l == NULL || tweak == NULL) { return -EINVAL; }
 
@@ -181,7 +186,7 @@ int ddd_aes_ref_encrypt(u8 *cipher, const u8 *const plain, const size_t len, con
 }
 
 int ddd_aes_ref_decrypt(u8 *plain, const u8 *const cipher, const size_t len, const u8 *const key_k,
-                             const u8 *const key_l, const u8 *const tweak, const size_t tweak_len) {
+                        const u8 *const key_l, const u8 *const tweak, const size_t tweak_len) {
     // Basic input validation
     if (plain == NULL || cipher == NULL || key_k == NULL || key_l == NULL || tweak == NULL) { return -EINVAL; }
 
@@ -222,7 +227,6 @@ int ddd_aes_ref_decrypt(u8 *plain, const u8 *const cipher, const size_t len, con
 
     return 0;
 }
-
 
 EXPORT_SYMBOL_GPL(ddd_aes_ref_encrypt);
 EXPORT_SYMBOL_GPL(ddd_aes_ref_decrypt);

@@ -8,8 +8,8 @@
 #ifndef DDD_AES_REF_H_
 #define DDD_AES_REF_H_
 
-#include <linux/types.h>
 #include <crypto/aes.h>
+#include <linux/types.h>
 
 // In the default version, we assume |c|=0 and use 28 bits for the counter j, so we can encrypt up to 2**28 - 1 blocks
 #define MAXENCRYPTBLOCKS (1 << 28)
@@ -21,7 +21,13 @@
 #define BLOCKSIZE_BYTES AES_BLOCK_SIZE
 #define KEYSIZE_BYTES AES_KEYSIZE_128
 
+// Testing static functions in internal test suite
+#if IS_ENABLED(CONFIG_KUNIT)
+void times_2(u8 blk[AES_BLOCK_SIZE]);
 int xor_h(u8 *out, const u8 *const in, const size_t len, const u8 *const raw_key);
+int xor_f(u8 *out, const size_t outlen, const u8 in[AES_BLOCK_SIZE], const u8 *key_k, const u8 b,
+          const u8 tweak[TWEAKSIZE_BYTES]);
+#endif
 
 /// @brief DDD-AES encryption implementation.
 /// @param[out] cipher Ciphertext (output). The result of DDD-AES encryption function application to @p plain.
@@ -32,13 +38,8 @@ int xor_h(u8 *out, const u8 *const in, const size_t len, const u8 *const raw_key
 /// @param[in] tweak Tweak.
 /// @param[in] tweak_len Tweak length (in bytes).
 /// @return 0 on success, error code < 0 on error.
-int ddd_aes_ref_encrypt(u8* cipher,
-                             const u8* const plain,
-                             const size_t len,
-                             const u8* const key_k,
-                             const u8* const key_l,
-                             const u8* const tweak,
-                             const size_t tweak_len);
+int ddd_aes_ref_encrypt(u8 *cipher, const u8 *const plain, const size_t len, const u8 *const key_k,
+                        const u8 *const key_l, const u8 *const tweak, const size_t tweak_len);
 
 /// @brief DDD-AES decryption implementation.
 /// @param[out] plain Plaintext (output). The result of DDD-AES decryption function application to @p cipher.
@@ -49,12 +50,7 @@ int ddd_aes_ref_encrypt(u8* cipher,
 /// @param[in] tweak Tweak.
 /// @param[in] tweak_len Tweak length (in bytes).
 /// @return 0 on success, error code < 0 on error.
-int ddd_aes_ref_decrypt(u8* plain,
-                             const u8* const cipher,
-                             const size_t len,
-                             const u8* const key_k,
-                             const u8* const key_l,
-                             const u8* const tweak,
-                             const size_t tweak_len);
+int ddd_aes_ref_decrypt(u8 *plain, const u8 *const cipher, const size_t len, const u8 *const key_k,
+                        const u8 *const key_l, const u8 *const tweak, const size_t tweak_len);
 
 #endif /* DDD_AES_REF_H_ */
